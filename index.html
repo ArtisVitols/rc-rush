@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<title>RC RUSH — リモート・ラッシュ</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏁</text></svg>">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="raceinfo">
+    <span id="lap">LAP 1/3</span>
+    <span id="pos">P1</span>
+    <span id="rtime">0:00.0</span>
+  </div>
+  <button id="camtoggle" title="camera">⛶</button>
+  <div id="wrongway" class="hidden">WRONG WAY!</div>
+</div>
+
+<!-- Touch controls -->
+<div id="controls" class="hidden">
+  <div class="pad left">
+    <button class="ctl" id="btnL">◀</button>
+    <button class="ctl" id="btnR">▶</button>
+  </div>
+  <div class="pad right">
+    <button class="ctl brake" id="btnB">▼</button>
+    <button class="ctl gas" id="btnG">▲</button>
+  </div>
+</div>
+
+<div id="countdown" class="hidden"></div>
+
+<!-- Menu -->
+<div id="menu">
+  <div class="panel">
+    <div class="logo">
+      <div class="gear">✦</div>
+      <h1>RC RUSH</h1>
+      <div class="jp">リモート・ラッシュ</div>
+    </div>
+    <div id="mainbuttons">
+      <div class="colorrow">
+        <span class="collabel">YOUR CAR</span>
+        <button class="swatch yellow sel" data-c="yellow"></button>
+        <button class="swatch green" data-c="green"></button>
+        <button class="swatch purple" data-c="purple"></button>
+      </div>
+      <button class="mbtn" id="btnHost">CREATE RACE</button>
+      <button class="mbtn" id="btnJoin">JOIN RACE</button>
+      <button class="mbtn ghost" id="btnSolo">PRACTICE SOLO</button>
+    </div>
+    <div id="hostpanel" class="hidden">
+      <div class="roomlabel">ROOM CODE</div>
+      <div id="roomcode">----</div>
+      <button class="mbtn small" id="btnShare">SHARE LINK</button>
+      <div id="hoststatus" class="status">waiting for opponent…</div>
+      <button class="mbtn ghost small" id="btnHostBack">BACK</button>
+    </div>
+    <div id="joinpanel" class="hidden">
+      <div class="roomlabel">ENTER ROOM CODE</div>
+      <input id="codeinput" maxlength="4" autocomplete="off" spellcheck="false" placeholder="ABCD">
+      <button class="mbtn small" id="btnJoinGo">CONNECT</button>
+      <div id="joinstatus" class="status"></div>
+      <button class="mbtn ghost small" id="btnJoinBack">BACK</button>
+    </div>
+    <div class="foot">2-PLAYER RC RACING · 3 LAPS · スピード!</div>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="results" class="hidden">
+  <div class="panel">
+    <h2 id="resTitle">FINISH!</h2>
+    <div id="resBody"></div>
+    <button class="mbtn" id="btnRematch">REMATCH</button>
+    <button class="mbtn ghost" id="btnMenu">MENU</button>
+  </div>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+window.addEventListener('error', (e) => {
+  let d = document.getElementById('errbox');
+  if (!d) {
+    d = document.createElement('pre');
+    d.id = 'errbox';
+    d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#300;color:#f88;font:12px monospace;padding:8px;white-space:pre-wrap;max-height:50vh;overflow:auto';
+    document.body.appendChild(d);
+  }
+  d.textContent += (e.message || e.type) + ' @ ' + (e.filename || '') + ':' + (e.lineno || '') + '\n';
+});
+window.addEventListener('unhandledrejection', (e) => {
+  window.dispatchEvent(new ErrorEvent('error', { message: 'Promise: ' + (e.reason && e.reason.message || e.reason) }));
+});
+</script>
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
