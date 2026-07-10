@@ -1,6 +1,6 @@
 // Diorama world: ground texture (sand + painted track), base cliff block, rocks, cacti.
 import * as THREE from 'three';
-import { BOARD, BASE_DEPTH } from './track.js';
+import { BOARD, BASE_DEPTH } from './track.js?v5';
 
 const TEX = 2048;
 function w2c(v) { return (v + BOARD) / (2 * BOARD) * TEX; }   // world coord -> canvas px

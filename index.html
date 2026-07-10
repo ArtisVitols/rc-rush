@@ -8,10 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#000000">
 <title>RC RUSH — リモート・ラッシュ</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏁</text></svg>">
 <script type="importmap">
-{ "imports": { "three": "./vendor/three.module.js" } }
+{ "imports": { "three": "./vendor/three.module.js?v5" } }
 </script>
 </head>
 <body>
@@ -76,7 +76,7 @@
       <div id="joinstatus" class="status"></div>
       <button class="mbtn ghost small" id="btnJoinBack">BACK</button>
     </div>
-    <div class="foot">2-PLAYER RC RACING · 3 LAPS · スピード!</div>
+    <div class="foot">2-PLAYER RC RACING · 3 LAPS · スピード! · V5</div>
   </div>
 </div>
 
@@ -106,8 +106,17 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   window.dispatchEvent(new ErrorEvent('error', { message: 'Promise: ' + (e.reason && e.reason.message || e.reason) }));
 });
+// iOS Safari ignores user-scalable=no: block native page pinch-zoom / double-tap zoom
+// so the in-game pinch (on the canvas) receives the gesture instead.
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+}
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1 || e.target.id === 'game' || e.target.classList.contains('ctl')) e.preventDefault();
+}, { passive: false });
+document.addEventListener('dblclick', (e) => { if (e.target.id === 'game') e.preventDefault(); });
 </script>
 <script src="vendor/peerjs.min.js"></script>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v5"></script>
 </body>
 </html>

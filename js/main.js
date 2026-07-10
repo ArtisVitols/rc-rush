@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { Track, BOARD, makeCamera, positionBoardCamera, fitBoardZoom, CAM } from './track.js';
-import { buildWorld } from './world.js';
-import { buildProps } from './props.js';
-import { buildCar } from './cars.js';
-import { CarPhysics, collideCars } from './physics.js';
-import { RaceCar, TOTAL_LAPS, fmtTime } from './race.js';
-import { Controls } from './controls.js';
-import { Net, RemoteCar, makeCode } from './net.js';
+import { Track, BOARD, makeCamera, positionBoardCamera, fitBoardZoom, CAM } from './track.js?v5';
+import { buildWorld } from './world.js?v5';
+import { buildProps } from './props.js?v5';
+import { buildCar } from './cars.js?v5';
+import { CarPhysics, collideCars } from './physics.js?v5';
+import { RaceCar, TOTAL_LAPS, fmtTime } from './race.js?v5';
+import { Controls } from './controls.js?v5';
+import { Net, RemoteCar, makeCode } from './net.js?v5';
 
 const qs = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
@@ -137,7 +137,7 @@ resize();
 // ---------- pinch zoom / two-finger pan / wheel zoom (board view) ----------
 {
   const pts = new Map();
-  let d0 = 0, zoom0 = 1, mid0 = null, pan0 = new THREE.Vector3(), lastTap = 0;
+  let d0 = 0, zoom0 = 1, mid0 = null, pan0 = new THREE.Vector3(), lastTap = 0, lastTapPos = [0, 0];
   const azr = CAM.azDeg * Math.PI / 180, elr = CAM.elDeg * Math.PI / 180;
   const rightG = new THREE.Vector3(Math.cos(azr), 0, -Math.sin(azr));
   const upG = new THREE.Vector3(-Math.sin(azr), 0, -Math.cos(azr));
@@ -151,8 +151,10 @@ resize();
   canvas.addEventListener('pointerdown', (e) => {
     if (pts.size === 0 && e.pointerType === 'touch') {
       const now = performance.now();
-      if (now - lastTap < 320) resetBoardView();   // double-tap resets view
+      const near = Math.hypot(e.clientX - lastTapPos[0], e.clientY - lastTapPos[1]) < 70;
+      if (now - lastTap < 480 && near) resetBoardView();   // double-tap resets view
       lastTap = now;
+      lastTapPos = [e.clientX, e.clientY];
     }
     pts.set(e.pointerId, [e.clientX, e.clientY]);
     if (pts.size === 2) {

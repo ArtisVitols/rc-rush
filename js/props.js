@@ -1,7 +1,7 @@
 // All diorama props: billboards, START gate, grandstand, towers, shack, containers,
 // water tower, tire stacks, signs, and the fences/barriers that line the track.
 import * as THREE from 'three';
-import { mulberry, rockGeo } from './world.js';
+import { mulberry, rockGeo } from './world.js?v5';
 
 // ---------- shared materials ----------
 const M = {

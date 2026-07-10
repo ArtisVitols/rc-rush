@@ -1,5 +1,5 @@
 // Arcade RC car physics on the 2D ground plane.
-import { CAR_LEN, CAR_WID } from './cars.js';
+import { CAR_LEN, CAR_WID } from './cars.js?v5';
 
 const SURF = {
   A: { grip: 9.0, maxSpeed: 40, accel: 30, roll: 1.2 },   // asphalt
