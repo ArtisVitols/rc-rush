@@ -163,31 +163,37 @@ export class Track {
   }
   _key(x, z) { return (Math.floor(x / this.cell) + 200) * 1000 + Math.floor(z / this.cell) + 200; }
 
-  // nearest sample to a world position (checks 3x3 cells, falls back to coarse scan)
-  nearest(x, z) {
+  // nearest sample to a world position (checks 3x3 cells, falls back to coarse scan).
+  // nearU: if given, prefer samples within a track-distance window of it — required where
+  // two track legs pass close to each other (top band vs hairpin, loop exit vs entry).
+  nearest(x, z, nearU = null) {
     let best = -1, bd = 1e9;
+    let bestNear = -1, bdNear = 1e9;
+    const WIN = 0.045;
+    const consider = (i) => {
+      const s = this.samples[i];
+      const d = (s.pos.x - x) ** 2 + (s.pos.z - z) ** 2;
+      if (d < bd) { bd = d; best = i; }
+      if (nearU != null) {
+        let du = Math.abs(s.u - nearU);
+        if (du > 0.5) du = 1 - du;
+        if (du < WIN && d < bdNear) { bdNear = d; bestNear = i; }
+      }
+    };
     const cx = Math.floor(x / this.cell), cz = Math.floor(z / this.cell);
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
       const arr = this.grid.get((cx + dx + 200) * 1000 + (cz + dz + 200));
       if (!arr) continue;
-      for (const i of arr) {
-        const s = this.samples[i];
-        const d = (s.pos.x - x) ** 2 + (s.pos.z - z) ** 2;
-        if (d < bd) { bd = d; best = i; }
-      }
+      for (const i of arr) consider(i);
     }
     if (best < 0) {
-      for (let i = 0; i < N_SAMPLES; i += 8) {
-        const s = this.samples[i];
-        const d = (s.pos.x - x) ** 2 + (s.pos.z - z) ** 2;
-        if (d < bd) { bd = d; best = i; }
-      }
+      for (let i = 0; i < N_SAMPLES; i += 8) consider(i);
     }
-    return best;
+    return bestNear >= 0 ? bestNear : best;
   }
   // info at world pos: {sample, lateral (+left), dist, surface, onTrack}
-  probe(x, z) {
-    const i = this.nearest(x, z);
+  probe(x, z, nearU = null) {
+    const i = this.nearest(x, z, nearU);
     const s = this.samples[i];
     const dx = x - s.pos.x, dz = z - s.pos.z;
     const lat = dx * s.nrm.x + dz * s.nrm.z;

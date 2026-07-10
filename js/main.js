@@ -357,17 +357,39 @@ if (qs.get('debug')) {
   document.body.appendChild(d);
 }
 
-function autopilot() {
+const apState = { stuck: 0, revUntil: 0, revSteer: 0 };
+function autopilot(dt) {
   const my = G.my;
-  const pr = track.probe(my.x, my.z);
-  const lookU = (pr.u + 0.012) % 1;
-  const tp = track.pointAt(lookU);
-  const dx = tp.x - my.x, dz = tp.z - my.z;
-  const want = Math.atan2(dx, dz);
-  let dh = want - my.heading;
-  while (dh > Math.PI) dh -= 2 * Math.PI;
-  while (dh < -Math.PI) dh += 2 * Math.PI;
-  return { steer: THREE.MathUtils.clamp(dh * 2.2, -1, 1), gas: Math.abs(dh) < 0.9 ? 1 : 0.35, brake: Math.abs(dh) > 1.35 ? 0.6 : 0 };
+  const now = performance.now();
+  // unstick: if wedged (no speed while trying to go), back up briefly
+  if (Math.abs(my.speed) < 1.2 && G.mode === 'race') apState.stuck += dt;
+  else apState.stuck = 0;
+  if (apState.stuck > 1.4 && now > apState.revUntil) {
+    apState.revUntil = now + 900;
+    const pr0 = track.probe(my.x, my.z, my.u);
+    apState.revSteer = pr0.lat > 0 ? 1 : -1;
+    apState.stuck = 0;
+  }
+  if (now < apState.revUntil) return { steer: apState.revSteer, gas: 0, brake: 1 };
+
+  const pr = track.probe(my.x, my.z, my.u);
+  const look = (du) => {
+    const tp = track.pointAt((pr.u + du) % 1);
+    const want = Math.atan2(tp.x - my.x, tp.z - my.z);
+    let dh = want - my.heading;
+    while (dh > Math.PI) dh -= 2 * Math.PI;
+    while (dh < -Math.PI) dh += 2 * Math.PI;
+    return dh;
+  };
+  const dh = look(0.008);
+  const dhFar = look(0.022);
+  const sharp = Math.max(Math.abs(dh), Math.abs(dhFar) * 0.7);
+  const fast = my.speed > 22;
+  return {
+    steer: THREE.MathUtils.clamp(dh * 2.4, -1, 1),
+    gas: sharp < 0.55 ? 1 : sharp < 1.0 ? (fast ? 0 : 0.7) : 0.3,
+    brake: (sharp > 0.85 && fast) || sharp > 1.4 ? 0.7 : 0,
+  };
 }
 
 // ---------- HUD ----------
@@ -391,6 +413,7 @@ function updateHUD() {
 function updateCountdown() {
   const left = G.raceT0 - G.now;
   const el = $('countdown');
+  if (left <= 0 && G.mode === 'countdown') G.mode = 'race';
   if (left <= -800) { show('countdown', false); return; }
   show('countdown');
   if (left > 0) {
@@ -399,7 +422,6 @@ function updateCountdown() {
   } else {
     el.classList.add('go');
     el.textContent = 'GO!';
-    if (G.mode === 'countdown') G.mode = 'race';
   }
 }
 
@@ -415,8 +437,8 @@ function loop() {
   if (G.mode === 'countdown' || G.mode === 'race') {
     updateCountdown();
     const input = G.mode === 'race' && !G.myRace.finished
-      ? (TEST === 'drive' ? autopilot() : controls.read())
-      : { gas: 0, brake: 1, steer: 0 };
+      ? (TEST === 'drive' ? autopilot(dt) : controls.read())
+      : { gas: 0, brake: 0, steer: 0 };
     G.my.step(dt, input);
 
     // collide with remote car (positionally)

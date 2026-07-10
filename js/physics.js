@@ -27,7 +27,7 @@ export class CarPhysics {
 
   step(dt, input) {
     // input: {gas:0..1, brake:0..1, steer:-1..1}
-    const probe = this.track.probe(this.x, this.z);
+    const probe = this.track.probe(this.x, this.z, this.u);
     const off = Math.abs(probe.lat) - probe.s.w;
     this.surface = off > 0.6 ? 'S' : probe.s.s;
     this.u = probe.u;
@@ -38,9 +38,9 @@ export class CarPhysics {
     const rx = fz, rz = -fx;                            // right vector
     let vR = this.vx * rx + this.vz * rz;              // lateral speed
 
-    // steering (speed sensitive)
+    // steering (speed sensitive, but keep authority at low speed — arcade feel)
     const steerMax = 0.85;
-    const sf = Math.min(1, Math.abs(vF) / 6);
+    const sf = Math.max(0.35, Math.min(1, Math.abs(vF) / 6));
     this.steer += (input.steer * steerMax - this.steer) * Math.min(1, dt * 10);
     const yawRate = this.steer * sf * (2.9 - Math.min(1.2, Math.abs(vF) * 0.02)) * Math.sign(vF || 1);
     this.heading += yawRate * dt;
@@ -68,7 +68,7 @@ export class CarPhysics {
     this.speed = vF;
 
     // wall clamp (track corridor)
-    const p2 = this.track.probe(this.x, this.z);
+    const p2 = this.track.probe(this.x, this.z, this.u);
     const limit = p2.s.w + WALL_MARGIN;
     this.wallHit = 0;
     if (Math.abs(p2.lat) > limit) {
@@ -78,8 +78,9 @@ export class CarPhysics {
       this.z = p2.s.pos.z + nz * limit * sgn;
       const vn = this.vx * nx + this.vz * nz;
       if (vn * sgn > 0) {
-        this.vx -= nx * vn * 1.5;
-        this.vz -= nz * vn * 1.5;
+        // kill the into-wall component (slight restitution), keep sliding along the wall
+        this.vx -= nx * vn * 1.25;
+        this.vz -= nz * vn * 1.25;
         this.wallHit = Math.abs(vn);
       }
     }
