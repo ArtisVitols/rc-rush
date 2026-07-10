@@ -31,7 +31,8 @@ export class Controls {
     const right = t.R || k.has('arrowright') || k.has('d');
     const gas = t.G || k.has('arrowup') || k.has('w');
     const brake = t.B || k.has('arrowdown') || k.has('s') || k.has(' ');
-    const target = (right ? 1 : 0) - (left ? 1 : 0);
+    // heading convention: positive steer turns LEFT (heading increases), so left - right
+    const target = (left ? 1 : 0) - (right ? 1 : 0);
     this.state.steer = target;
     this.state.gas = gas ? 1 : 0;
     this.state.brake = brake ? 1 : 0;

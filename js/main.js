@@ -98,6 +98,22 @@ const G = {
 const controls = new Controls();
 
 // ---------- camera ----------
+// board-view pinch state: zoom multiplier over the fit-to-screen zoom + pan target
+let boardFit = 1;
+let boardZoomExtra = 1;
+const boardPan = CAM.target.clone();
+
+function applyBoardCamera() {
+  positionBoardCamera(camera, boardPan);
+  camera.zoom = boardFit * boardZoomExtra;
+  camera.updateProjectionMatrix();
+}
+function resetBoardView() {
+  boardZoomExtra = 1;
+  boardPan.copy(CAM.target);
+  if (G.camMode === 'board') applyBoardCamera();
+}
+
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
@@ -107,11 +123,78 @@ function resize() {
     camera.updateProjectionMatrix();
     return;
   }
-  if (G.camMode === 'board') fitBoardZoom(camera);
+  if (G.camMode === 'board') {
+    positionBoardCamera(camera, CAM.target);
+    fitBoardZoom(camera);
+    boardFit = camera.zoom;
+    applyBoardCamera();
+  }
   camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize);
 resize();
+
+// ---------- pinch zoom / two-finger pan / wheel zoom (board view) ----------
+{
+  const pts = new Map();
+  let d0 = 0, zoom0 = 1, mid0 = null, pan0 = new THREE.Vector3(), lastTap = 0;
+  const azr = CAM.azDeg * Math.PI / 180, elr = CAM.elDeg * Math.PI / 180;
+  const rightG = new THREE.Vector3(Math.cos(azr), 0, -Math.sin(azr));
+  const upG = new THREE.Vector3(-Math.sin(azr), 0, -Math.cos(azr));
+  const fovr = CAM.fov * Math.PI / 180;
+  const clampPan = () => {
+    boardPan.x = Math.min(BOARD, Math.max(-BOARD, boardPan.x));
+    boardPan.z = Math.min(BOARD, Math.max(-BOARD, boardPan.z));
+  };
+  const canPinch = () => G.camMode === 'board' && qs.get('pose') !== 'reference';
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (pts.size === 0 && e.pointerType === 'touch') {
+      const now = performance.now();
+      if (now - lastTap < 320) resetBoardView();   // double-tap resets view
+      lastTap = now;
+    }
+    pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      d0 = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      mid0 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      zoom0 = boardZoomExtra;
+      pan0.copy(boardPan);
+    }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size !== 2 || !canPinch() || !d0) return;
+    const [a, b] = [...pts.values()];
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    boardZoomExtra = Math.min(8, Math.max(1, zoom0 * d / Math.max(20, d0)));
+    // pan: content follows the fingers' midpoint
+    const wpp = 2 * CAM.dist * Math.tan(fovr / 2) / (camera.zoom * innerHeight);
+    const dx = mid[0] - mid0[0], dy = mid[1] - mid0[1];
+    boardPan.copy(pan0)
+      .addScaledVector(rightG, -dx * wpp)
+      .addScaledVector(upG, dy * wpp / Math.sin(elr));
+    clampPan();
+    if (boardZoomExtra < 1.02) boardPan.lerp(CAM.target, 1 - boardZoomExtra + 0.02);
+    applyBoardCamera();
+  });
+  const drop = (e) => {
+    pts.delete(e.pointerId);
+    if (pts.size < 2) d0 = 0;
+  };
+  canvas.addEventListener('pointerup', drop);
+  canvas.addEventListener('pointercancel', drop);
+  // desktop: mouse-wheel zoom
+  addEventListener('wheel', (e) => {
+    if (!canPinch()) return;
+    boardZoomExtra = Math.min(8, Math.max(1, boardZoomExtra * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    if (boardZoomExtra <= 1.02) boardPan.copy(CAM.target);
+    applyBoardCamera();
+  }, { passive: true });
+}
 
 const followPos = new THREE.Vector3();
 function updateCamera(dt) {
@@ -131,7 +214,7 @@ function updateCamera(dt) {
 }
 $('camtoggle').addEventListener('click', () => {
   G.camMode = G.camMode === 'board' ? 'follow' : 'board';
-  if (G.camMode === 'board') { positionBoardCamera(camera); fitBoardZoom(camera); }
+  if (G.camMode === 'board') resetBoardView();
   else if (G.my) followPos.set(G.my.x, 0, G.my.z);
 });
 
@@ -204,7 +287,7 @@ function backToMenu() {
   for (const n of Object.values(carNodes)) n.visible = false;
   setMenuPoses();
   G.camMode = 'board';
-  positionBoardCamera(camera); fitBoardZoom(camera);
+  resetBoardView();
   show('results', false); show('hud', false); show('controls', false); show('menu');
   show('hostpanel', false); show('joinpanel', false); show('mainbuttons');
 }
@@ -491,4 +574,5 @@ function loop() {
 }
 window.__game = G;
 window.__track = track;
+window.__cam = camera;
 loop();

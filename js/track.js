@@ -218,9 +218,9 @@ export function makeCamera(aspect) {
   return cam;
 }
 
-export function positionBoardCamera(cam) {
+export function positionBoardCamera(cam, target) {
   const az = CAM.azDeg * Math.PI / 180, el = CAM.elDeg * Math.PI / 180;
-  const t = CAM.target;
+  const t = target || CAM.target;
   cam.position.set(
     t.x + CAM.dist * Math.cos(el) * Math.sin(az),
     CAM.dist * Math.sin(el),
